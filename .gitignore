@@ -3,3 +3,4 @@
 *.cxxflags
 *.files
 *.includes
+*.creator
