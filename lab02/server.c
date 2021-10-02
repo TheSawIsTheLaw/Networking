@@ -8,13 +8,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "properties.h"
+
 #define ERRROR_SOCKET_CREATION 1
 #define ERROR_BIND 2
 #define ERROR_RECV 3
 
-#define SIN_PORT 1337
-
-#define BUFFER_SIZE 666
 static int socketDescr;
 
 void outHandle(int sigNum)
@@ -34,7 +33,7 @@ int main()
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
-        .sin_port = SIN_PORT,
+        .sin_port = htons(SIN_PORT),
         .sin_addr.s_addr = INADDR_ANY
     };
 
@@ -63,7 +62,7 @@ int main()
         }
         flexBuffer[gotInBytes] = '\0';
 
-        printf("CATCH! And we've got from %s:%d message: %s", inet_ntoa(client.sin_addr), ntohs(client.sin_port), flexBuffer);
+        printf("CATCH! And we've got from %s:%d message: %s\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port), flexBuffer);
     }
 
     return 0;
