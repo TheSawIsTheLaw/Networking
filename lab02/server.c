@@ -16,21 +16,31 @@
 
 static int socketDescr;
 
-int itoa(int a, int p, char *s)
-{
-    char letters[30] = {"0123456789ABCDEFGHIJKLMNOPQRST"};
+static char *itoaAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; 
 
-    int num = (int)a;
-    int rest = num % p;
-    num /= p;
-    if (num == 0)
+int itoa(int numToConvert, int base, char *outString)
+{
+    if (base > 36)
     {
-        s[0] = letters[rest];
+        return 0;
+    }
+
+    int memoryRemains = numToConvert % base; 
+    // Fortune, fame, mirror, vain, gone insane but the memory remains...
+    // Sry.
+
+    numToConvert = numToConvert / base;
+
+    if (numToConvert == 0)
+    {
+        outString[0] = itoaAlphabet[memoryRemains];
         return 1;
     }
-    int k = itoa(num, p, s);
-    s[k++] = letters[rest];
-    return k;
+
+    int proccessedIndex = itoa(numToConvert, base, outString);
+    outString[proccessedIndex++] = itoaAlphabet[memoryRemains];
+    
+    return proccessedIndex;
 }
 
 void outHandle(int sigNum)
@@ -45,6 +55,7 @@ int startReceiver()
     struct sockaddr_in client = {0};
     socklen_t len = sizeof(struct sockaddr_in);
     size_t gotInBytes = 0;
+    
     for (;;)
     {
         gotInBytes = recvfrom(socketDescr, flexBuffer, BUFFER_SIZE, 0, (struct sockaddr *)&client, &len);
