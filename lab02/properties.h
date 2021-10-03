@@ -1,7 +1,7 @@
 #ifndef PROPERTIES_H
 #define PROPERTIES_H
 
-#define SIN_PORT 1337
+#define SER_PORT 1337
 
 #define BUFFER_SIZE 666
 

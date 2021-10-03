@@ -27,12 +27,10 @@ int main(int argc, char *argv[])
     }
 
     struct sockaddr_in serverAddrToSend = {
-        .sin_family = AF_INET,
-        .sin_port = htons(SIN_PORT),
-        .sin_addr.s_addr = INADDR_ANY
-    };
+        .sin_family = AF_INET, .sin_port = htons(SER_PORT), .sin_addr.s_addr = INADDR_ANY};
 
-    if (sendto(socketDecsr, argv[1], strlen(argv[1]), 0, (struct sockaddr *) &serverAddrToSend, sizeof(serverAddrToSend)) < 0)
+    if (sendto(socketDecsr, argv[1], strlen(argv[1]), 0, (struct sockaddr *)&serverAddrToSend,
+               sizeof(serverAddrToSend)) < 0)
     {
         printf("Cannot send a message. Exit...");
         return ERROR_SEND_TO;
