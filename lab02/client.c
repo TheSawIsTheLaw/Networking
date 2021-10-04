@@ -15,30 +15,33 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        printf("Error: no message.");
+        printError("Error: no message in arguments.");
         return ERROR_PARAMETERS;
     }
 
-    int socketDecsr = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (socketDecsr < 0)
+    int socketDescr = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (socketDescr < 0)
     {
-        printf("Cannot create socket. Exit...");
+        printError("Cannot create socket. Exit...");
         return ERROR_SOCKET_CREATURE;
     }
 
     struct sockaddr_in serverAddrToSend = {
-        .sin_family = AF_INET, .sin_port = htons(SER_PORT), .sin_addr.s_addr = INADDR_ANY};
+        .sin_family = AF_INET,
+        .sin_port = htons(SER_PORT), 
+        .sin_addr.s_addr = INADDR_ANY
+    };
 
-    if (sendto(socketDecsr, argv[1], strlen(argv[1]), 0, (struct sockaddr *)&serverAddrToSend,
+    if (sendto(socketDescr, argv[1], strlen(argv[1]), 0, (struct sockaddr *)&serverAddrToSend,
                sizeof(serverAddrToSend)) < 0)
     {
-        printf("Cannot send a message. Exit...");
+        printError("Cannot send a message.");
         return ERROR_SEND_TO;
     }
 
-    printf("Message was sent.\n");
+    printOkMessage("Message was sent.\n");
 
-    close(socketDecsr);
+    close(socketDescr);
 
     return EXIT_SUCCESS;
 }

@@ -16,16 +16,16 @@
 
 static int socketDescr;
 
-static char *itoaAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; 
+static char *itoaAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 int itoa(int numToConvert, int base, char *outString)
 {
-    if (base > 36)
+    if (base > 36 || base < 2)
     {
         return 0;
     }
 
-    int memoryRemains = numToConvert % base; 
+    int memoryRemains = numToConvert % base;
     // Fortune, fame, mirror, vain, gone insane but the memory remains...
     // Sry.
 
@@ -39,7 +39,7 @@ int itoa(int numToConvert, int base, char *outString)
 
     int proccessedIndex = itoa(numToConvert, base, outString);
     outString[proccessedIndex++] = itoaAlphabet[memoryRemains];
-    
+
     return proccessedIndex;
 }
 
@@ -55,36 +55,45 @@ int startReceiver()
     struct sockaddr_in client = {0};
     socklen_t len = sizeof(struct sockaddr_in);
     size_t gotInBytes = 0;
-    
+
     for (;;)
     {
         gotInBytes = recvfrom(socketDescr, flexBuffer, BUFFER_SIZE, 0, (struct sockaddr *)&client, &len);
         if (gotInBytes < 0)
         {
-            printf("Recvfrom error.");
+            printError("Recvfrom error");
             return ERROR_RECV;
         }
         flexBuffer[gotInBytes] = '\0';
 
         int usedNum = atoi(flexBuffer);
-        printf("CATCH! And we've got from %s:%d "
-               "Decimal message: %s\n",
+        printf(GREEN "CATCH! And we've got from %s:%d "
+                     "Decimal message: %s\n",
                inet_ntoa(client.sin_addr), ntohs(client.sin_port), flexBuffer);
 
-        char bin[100] = "\0";
-        char hex[100] = "\0";
-        char oct[100] = "\0";
-        char twenty[100] = "\0";
+        if (usedNum < 0)
+        {
+            printError("Negative numbers are not supported :(\n");
+        }
+        else
+        {
+            char bin[100] = "\0";
+            char hex[100] = "\0";
+            char oct[100] = "\0";
+            char twenty[100] = "\0";
 
-        itoa(usedNum, 2, bin);
-        itoa(usedNum, 16, hex);
-        itoa(usedNum, 8, oct);
-        itoa(usedNum, 20, twenty);
-        printf("Got message in binary: %s\n"
-               "Got message in hexidecimal: %s\n"
-               "Got message in octal: %s\n"
-               "Got message in variant 20: %s\n",
-               bin, hex, oct, twenty);
+            itoa(usedNum, 2, bin);
+            itoa(usedNum, 16, hex);
+            itoa(usedNum, 8, oct);
+            itoa(usedNum, 20, twenty);
+            printf(CYAN "Got message in binary: %s\n"
+                        "Got message in hexidecimal: %s\n"
+                        "Got message in octal: %s\n"
+                        "Got message in variant 20: %s\n" RESET,
+                   bin, hex, oct, twenty);
+        }
+
+        printSeparator();
     }
 }
 
@@ -93,7 +102,7 @@ int main()
     socketDescr = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (socketDescr < 0)
     {
-        printf("Socket creation failed.");
+        printError("Socket creation failed.");
         return ERRROR_SOCKET_CREATION;
     }
 
@@ -106,12 +115,13 @@ int main()
 
     if (bind(socketDescr, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
-        printf("Bind error");
+        printError("Bind error");
         return ERROR_BIND;
     }
 
-    printf("Server is ready to go.\n"
-           "Exit: ctrl + C\n");
+    printOkMessage("Server is ready to go.\n"
+                   "Exit: ctrl + C\n");
+    printSeparator();
 
     signal(SIGINT, outHandle);
 
