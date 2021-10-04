@@ -125,9 +125,10 @@ int main()
                    "Exit: ctrl + C\n");
     printSeparator();
 
-    struct sigaction sigAct;
-    sigAct.sa_handler = outHandle;
-    sigAct.sa_flags = 0;
+    struct sigaction sigAct = {
+        .sa_handler = outHandle,
+        .sa_flags = 0
+    };
 
     if (sigaction(SIGINT, &sigAct, NULL) < 0)
     {
