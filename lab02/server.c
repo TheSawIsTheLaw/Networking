@@ -13,6 +13,7 @@
 #define ERRROR_SOCKET_CREATION 1
 #define ERROR_BIND 2
 #define ERROR_RECV 3
+#define ERROR_SIGACTION 4
 
 static int socketDescr;
 
@@ -46,6 +47,7 @@ int itoa(int numToConvert, int base, char *outString)
 void outHandle(int sigNum)
 {
     close(socketDescr);
+    printOkMessage("Good bye!\n");
     exit(EXIT_SUCCESS);
 }
 
@@ -123,7 +125,15 @@ int main()
                    "Exit: ctrl + C\n");
     printSeparator();
 
-    signal(SIGINT, outHandle);
+    struct sigaction sigAct;
+    sigAct.sa_handler = outHandle;
+    sigAct.sa_flags = 0;
+
+    if (sigaction(SIGINT, &sigAct, NULL) < 0)
+    {
+        printError("Can not set sigaction.");
+        return ERROR_SIGACTION;
+    }
 
     return startReceiver();
 }
