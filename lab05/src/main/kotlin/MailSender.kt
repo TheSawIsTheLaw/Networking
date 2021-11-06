@@ -1,7 +1,4 @@
-import java.io.BufferedReader
 import java.io.File
-import java.nio.charset.Charset
-import java.nio.file.Paths
 import javax.mail.*
 import javax.mail.internet.*
 
