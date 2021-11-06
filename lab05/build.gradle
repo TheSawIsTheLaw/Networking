@@ -11,4 +11,5 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation("com.sun.mail:javax.mail:1.6.2")
 }
