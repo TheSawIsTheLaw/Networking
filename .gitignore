@@ -23,7 +23,7 @@
 hs_err_pid*
 
 .gradle
-/build/
+lab05/build/
 
 # Ignore Gradle GUI config
 gradle-app.setting
@@ -33,3 +33,5 @@ gradle-app.setting
 
 # Cache of project
 .gradletasknamecache
+
+lab05/build
