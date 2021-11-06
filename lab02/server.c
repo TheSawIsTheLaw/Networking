@@ -112,7 +112,7 @@ int main()
         // IP-based communication
         .sin_family = AF_INET,
         .sin_port = htons(SER_PORT),
-        .sin_addr.s_addr = INADDR_ANY // Any enable interface
+        .sin_addr.s_addr = INADDR_ANY // Ко всем доступным интерфейсам, поэтому привязывается к любому свободному порту
     };
 
     if (bind(socketDescr, (struct sockaddr *)&addr, sizeof(addr)) < 0)
