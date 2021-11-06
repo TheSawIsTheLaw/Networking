@@ -1,6 +1,31 @@
+import java.io.BufferedReader
+import java.io.File
+import java.nio.charset.Charset
+import java.nio.file.Paths
 import javax.mail.*
-import javax.mail.internet.InternetAddress
-import javax.mail.internet.MimeMessage
+import javax.mail.internet.*
+
+fun findFilesToAttach(keyWord: String): List<File>
+{
+    val pathOfFilesToBeAttached = "textFilesToBeAttached/"
+    val filesToInspect = mutableListOf<File>()
+    File(pathOfFilesToBeAttached).walk().forEach {
+        if (it.name.contains(".txt")) filesToInspect.add(it)
+    }
+
+    val filesToAttach = mutableListOf<File>()
+    val lowercaseKey = keyWord.lowercase()
+    for (file in filesToInspect)
+    {
+        val fileString = file.bufferedReader().use { it.readText() }.lowercase()
+        if (fileString.contains(lowercaseKey))
+        {
+            filesToAttach.add(file)
+        }
+    }
+
+    return filesToAttach
+}
 
 fun main(args: Array<String>)
 {
@@ -12,7 +37,7 @@ fun main(args: Array<String>)
                     "2. Sender address\n" +
                     "3. Sender password\n" +
                     "4. Message\n" +
-                    "4. Key word for attached text file."
+                    "5. Key word for attached text file."
         )
 
         return
@@ -54,8 +79,20 @@ fun main(args: Array<String>)
         )
         message.subject = "Looks like i'm using some strange ways to write " +
                 "you a message..."
-        message.setText(messageText)
+        val multipart = MimeMultipart()
 
+        val textPart = MimeBodyPart()
+        textPart.setText(messageText)
+        multipart.addBodyPart(textPart)
+
+        for (file in findFilesToAttach(keyWordToAttachFile))
+        {
+            val filePart = MimeBodyPart()
+            filePart.attachFile(file)
+            multipart.addBodyPart(filePart)
+        }
+
+        message.setContent(multipart)
         Transport.send(message)
 
         println("Sent successfully")
@@ -64,6 +101,4 @@ fun main(args: Array<String>)
     {
         println("Your message can't be sent :(")
     }
-
-    return
 }
