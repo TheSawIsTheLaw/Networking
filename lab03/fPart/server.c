@@ -1,11 +1,14 @@
 #include <arpa/inet.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/sendfile.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -16,8 +19,10 @@
 #define ERROR_RECV 3
 #define ERROR_SIGACTION 4
 #define ERROR_SENDTO 5
+#define ERROR_LISTEN 6
 
 static int socketDescr;
+static int socketToSendFile;
 
 static char *itoaAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -63,7 +68,9 @@ void fullFilesInDirectory(char *filesInDirectory)
     if (d)
     {
         // Пропускаем текущую и родительскую
-        for (int i = 0; i < 2; i++, readdir(d)) {}
+        for (int i = 0; i < 2; i++, readdir(d))
+        {
+        }
 
         // Считываем имена
         while ((dir = readdir(d)) != NULL)
@@ -83,7 +90,7 @@ void fullFilesInDirectory(char *filesInDirectory)
 
 int startReceiver()
 {
-    char filesInDirectory[BUFFER_SIZE] = { 0 };
+    char filesInDirectory[BUFFER_SIZE] = {0};
     fullFilesInDirectory(filesInDirectory);
 
     char flexBuffer[BUFFER_SIZE];
@@ -104,7 +111,7 @@ int startReceiver()
         if (strcmp(flexBuffer, "hello"))
         {
             printError("Hello step is confused because it's not a hello message.");
-            continue ;
+            continue;
         }
 
         printf(GREEN "CATCH! And we've got from %s:%d "
@@ -129,7 +136,53 @@ int startReceiver()
         }
         flexBuffer[gotInBytes] = '\0';
 
-        printf("Got filename: %s", flexBuffer);
+        char fileToSendName[BUFFER_SIZE] = { 0 };
+        printf("Got buffer: %s", flexBuffer);
+        snprintf(fileToSendName, strlen(flexBuffer), "./static/%s", flexBuffer);
+        printf("Filename got: %s", fileToSendName);
+        int fileToSend = open(fileToSendName, O_RDONLY);
+        if (fileToSend < 0)
+        {
+            printError("Cannot open file");
+            continue;
+        }
+
+        struct stat fileStat;
+        if (fstat(fileToSend, &fileStat) < 0)
+        {
+            printError("Cannot get file stats");
+            continue;
+        }
+
+        socklen_t socketLen = sizeof(struct sockaddr_in);
+        struct sockaddr_in peerAddr;
+        int peerSocket = accept(socketToSendFile, (struct sockaddr *)&peerAddr, &socketLen);
+
+        if (peerSocket < 0)
+        {
+            printError("Error in acception");
+            continue;
+        }
+
+        char fileSize[FILENAME_MAX];
+        snprintf(fileSize, FILENAME_MAX, "%ld", fileStat.st_size);
+        if (send(peerSocket, fileSize, sizeof(fileSize), 0) < 0)
+        {
+            printError("Send error");
+            continue;
+        }
+
+        long offset = 0;
+        size_t remainData = fileStat.st_size;
+
+        int sent = 0;
+        while (((sent = sendfile(peerSocket, fileToSend, &offset, BUFSIZ)) > 0) && (remainData > 0))
+        {
+            remainData -= sent;
+        }
+
+        close(peerSocket);
+        close(fileToSend);
 
         printSeparator();
     }
@@ -155,6 +208,28 @@ int main()
     {
         printError("Bind error");
         return ERROR_BIND;
+    }
+
+    socketToSendFile = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (socketToSendFile < 0)
+    {
+        printError("Socket creation failed.");
+        return ERRROR_SOCKET_CREATION;
+    }
+
+    struct sockaddr_in addrToSendFile = {
+        .sin_family = AF_INET, .sin_port = htons(SER_PORT_DATA_TRANSFER), .sin_addr.s_addr = INADDR_ANY};
+
+    if (bind(socketToSendFile, (struct sockaddr *)&addrToSendFile, sizeof(addrToSendFile)) < 0)
+    {
+        printError("Bind error");
+        return ERROR_BIND;
+    }
+
+    if ((listen(socketToSendFile, 5)) < 0)
+    {
+        printError("Listening error");
+        return ERROR_LISTEN;
     }
 
     printOkMessage("Server is ready to go.\n"

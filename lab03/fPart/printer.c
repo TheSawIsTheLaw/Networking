@@ -17,5 +17,5 @@ void printOkMessage(char *msg)
 
 void printSeparator()
 {
-    printOkMessage("====================================|\n");
+    printOkMessage("\n====================================|\n");
 }
