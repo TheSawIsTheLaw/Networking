@@ -35,3 +35,16 @@ gradle-app.setting
 .gradletasknamecache
 
 lab05/build
+
+# c files
+*.exe
+*.cflags
+*.config
+*.creator
+*.cxxflags
+*.files
+*.includes
+
+# others
+*.xml
+*.MF
