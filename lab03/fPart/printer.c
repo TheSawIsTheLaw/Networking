@@ -7,12 +7,12 @@
 
 void printError(char *errMsg)
 {
-    printf(YELLOW "%s" RESET, errMsg);
+    printf(YELLOW "%s\n" RESET, errMsg);
 }
 
 void printOkMessage(char *msg)
 {
-    printf(GREEN "%s" RESET, msg);
+    printf(GREEN "%s\n" RESET, msg);
 }
 
 void printSeparator()

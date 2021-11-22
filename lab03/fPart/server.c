@@ -27,6 +27,7 @@ static int socketToSendFile;
 void outHandle(int sigNum)
 {
     close(socketDescr);
+    close(socketToSendFile);
     printOkMessage("Good bye!\n");
     exit(EXIT_SUCCESS);
 }
@@ -110,9 +111,8 @@ int startReceiver()
         flexBuffer[gotInBytes] = '\0';
 
         char fileToSendName[BUFFER_SIZE] = {0};
-        printf("Got buffer: %s with size %ld\n", flexBuffer, strlen(flexBuffer));
+
         snprintf(fileToSendName, strlen(flexBuffer) + 8, "static/%s", flexBuffer);
-        printf("|||%s|||\n", fileToSendName);
         printf("Filename got: %s\n", fileToSendName);
         int fileToSend = open(fileToSendName, O_RDONLY);
         if (fileToSend < 0)
@@ -138,7 +138,7 @@ int startReceiver()
             continue;
         }
 
-        char fileSize[FILENAME_MAX];
+        char fileSize[FILENAME_MAX] = { 0 };
         snprintf(fileSize, FILENAME_MAX, "%ld", fileStat.st_size);
         if (send(peerSocket, fileSize, sizeof(fileSize), 0) < 0)
         {
@@ -155,7 +155,6 @@ int startReceiver()
             remainData -= sent;
         }
 
-        close(peerSocket);
         close(fileToSend);
 
         printSeparator();
@@ -207,7 +206,7 @@ int main()
     }
 
     printOkMessage("Server is ready to go.\n"
-                   "Exit: ctrl + C\n");
+                   "Exit: ctrl + C");
     printSeparator();
 
     struct sigaction sigAct = {.sa_handler = outHandle, .sa_flags = 0};

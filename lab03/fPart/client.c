@@ -53,10 +53,10 @@ int main()
     }
 
     flexBuffer[gotInBytes] = '\0';
-    printOkMessage("Files on server:\n");
+    printOkMessage("Files on server:");
     printOkMessage(flexBuffer);
 
-    printOkMessage("\nChoose filename from this list:\n");
+    printOkMessage("\nChoose filename from this list:");
     char choice[FILENAME_MAX];
     scanf("%s", choice);
 
@@ -100,6 +100,7 @@ int main()
     {
         fwrite(flexBuffer, sizeof(char), len, receivedFile);
     }
+
     fclose(receivedFile);
     close(socketForFileTransfer);
 
