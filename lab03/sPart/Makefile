@@ -14,4 +14,4 @@ client.o: properties.h
 server.o: properties.h http.h
 
 clean:
-	rm *.o *.out
+	rm *.o *.exe
