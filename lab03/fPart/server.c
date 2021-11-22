@@ -24,33 +24,6 @@
 static int socketDescr;
 static int socketToSendFile;
 
-static char *itoaAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-int itoa(int numToConvert, int base, char *outString)
-{
-    if (base > 36 || base < 2)
-    {
-        return 0;
-    }
-
-    int memoryRemains = numToConvert % base;
-    // Fortune, fame, mirror, vain, gone insane but the memory remains...
-    // Sry.
-
-    numToConvert = numToConvert / base;
-
-    if (numToConvert == 0)
-    {
-        outString[0] = itoaAlphabet[memoryRemains];
-        return 1;
-    }
-
-    int proccessedIndex = itoa(numToConvert, base, outString);
-    outString[proccessedIndex++] = itoaAlphabet[memoryRemains];
-
-    return proccessedIndex;
-}
-
 void outHandle(int sigNum)
 {
     close(socketDescr);
@@ -136,14 +109,15 @@ int startReceiver()
         }
         flexBuffer[gotInBytes] = '\0';
 
-        char fileToSendName[BUFFER_SIZE] = { 0 };
-        printf("Got buffer: %s", flexBuffer);
-        snprintf(fileToSendName, strlen(flexBuffer), "./static/%s", flexBuffer);
-        printf("Filename got: %s", fileToSendName);
+        char fileToSendName[BUFFER_SIZE] = {0};
+        printf("Got buffer: %s with size %ld\n", flexBuffer, strlen(flexBuffer));
+        snprintf(fileToSendName, strlen(flexBuffer) + 8, "static/%s", flexBuffer);
+        printf("|||%s|||\n", fileToSendName);
+        printf("Filename got: %s\n", fileToSendName);
         int fileToSend = open(fileToSendName, O_RDONLY);
         if (fileToSend < 0)
         {
-            printError("Cannot open file");
+            printError("Cannot open file\n");
             continue;
         }
 
