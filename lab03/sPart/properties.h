@@ -2,6 +2,6 @@
 #define PROPERTIES_H
 
 #define SERVER_PORT 6666
-#define MSG_LEN 1024
+#define BUFFER_SIZE 1024
 
 #endif // PROPERTIES_H

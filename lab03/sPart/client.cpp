@@ -16,7 +16,7 @@
 
 static int client_sd;
 
-void get_request(const std::string &uri)
+void sendGetRequest(const std::string &uri)
 {
     std::ostringstream oss;
     oss << "GET /" << uri << " HTTP/1.1\n";
@@ -28,9 +28,9 @@ void get_request(const std::string &uri)
     write(client_sd, request.c_str(), request.size());
 }
 
-void get_response()
+void createResponse()
 {
-    char buff[MSG_LEN + 1];
+    char buff[BUFFER_SIZE + 1];
     int n = 0;
     std::cout << "[[Response]]\n";
     do
@@ -43,7 +43,7 @@ void get_response()
     std::cout << std::endl;
 }
 
-int shutdown_client(const char *str)
+int exitClientOnFailure(const char *str)
 {
     close(client_sd);
     perror(str);
@@ -104,12 +104,12 @@ int main(int argc, char **argv)
     };
     if (setsockopt(client_sd, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
     {
-        return shutdown_client("setsockopt");
+        return exitClientOnFailure("setsockopt");
     }
 
     if (bind(client_sd, reinterpret_cast<const sockaddr *>(&client_addr), sizeof client_addr) == -1)
     {
-        return shutdown_client("bind");
+        return exitClientOnFailure("bind");
     }
 
     const sockaddr_in server_addr = {
@@ -120,11 +120,12 @@ int main(int argc, char **argv)
 
     if (connect(client_sd, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
     {
-        return shutdown_client("connect");
+        return exitClientOnFailure("connect");
     }
 
-    get_request(uri);
-    get_response();
+    sendGetRequest(uri);
+    std::cout << "Request sent.";
+    createResponse();
 
     close(client_sd);
 }

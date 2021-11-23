@@ -21,22 +21,22 @@
 int server_sd;
 
 static sig_atomic_t stop;
-static pthread_t thread_pool[THREAD_POOL_SIZE];
+static pthread_t poolOfThreads[NUMBER_OF_THREADS];
 
-void create_threads()
+void threadsCreation()
 {
-    for (auto &thread : thread_pool)
+    for (int i = 0; i < NUMBER_OF_THREADS; i++)
     {
-        pthread_create(&thread, nullptr, thread_function, nullptr);
+        pthread_create(poolOfThreads + i, nullptr, threadFun, nullptr);
     }
 }
 
-void cancel_threads()
+void threadsRemove()
 {
     stop = true;
-    for (auto &thread : thread_pool)
+    for (int i = 0; i < NUMBER_OF_THREADS; i++)
     {
-        pthread_cancel(thread);
+        pthread_cancel(poolOfThreads[i]);
     }
 }
 
@@ -57,56 +57,54 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static std::queue<Client> queue;
 
-static const std::unordered_map<std::string, std::string> content_types = {
-    {".html", "text/html"}, {".css", "text/css"},    {".js", "application/javascript"},
-    {".jpg", "image/jpeg"}, {".jpeg", "image/jpeg"}, {".png", "image/png"},
-    {".gif", "image/gif"},
+static const std::unordered_map<std::string, std::string> typesOfContent = {
+    {".html", "text/html"},
+    {".jpg", "image/jpeg"},
 };
 
-static std::unordered_map<std::string, std::string> get_headers(const std::string &header)
+static std::unordered_map<std::string, std::string> getMapOfHeaders(const std::string &header)
 {
     std::unordered_map<std::string, std::string> headers;
     std::istringstream iss{header};
     for (std::string line; std::getline(iss, line) && line != "\n";)
     {
-        auto key_end = line.find(':');
+        size_t end = line.find(':');
 
-        auto key = line.substr(0, key_end);
-        auto value = line.substr(key_end + 2, line.length() - key_end - 1);
+        std::string key = line.substr(0, end);
+        std::string value = line.substr(end + 2, line.length() - end - 1);
 
         headers[key] = value;
     }
     return headers;
 }
 
-static std::string get_start_response_line(const std::string &protocol, int status_code)
+static std::string setFirstResponseLine(const std::string &protocol, int status)
 {
     const std::unordered_map<int, std::string> statuses = {
         {200, "OK"},
-        {403, "Forbidden"},
         {404, "Not Found"},
         {405, "Method Not Allowed"},
     };
 
-    return protocol + " " + std::to_string(status_code) + " " + statuses.at(status_code);
+    return protocol + " " + std::to_string(status) + " " + statuses.at(status);
 }
 
-static std::string response_format(const std::string &protocol, int status_code,
-                                   std::unordered_map<std::string, std::string> headers, std::string body)
+static std::string createResponse(const std::string &protocol, int status,
+                                  std::unordered_map<std::string, std::string> headers, std::string body)
 {
-    std::string response = get_start_response_line(protocol, status_code) + "\n";
+    std::string response = setFirstResponseLine(protocol, status) + "\n";
     std::cout << response;
 
-    if (status_code != 200)
+    if (status != 200)
     {
-        std::ifstream infile{"public/errors/" + std::to_string(status_code) + ".html"};
+        std::ifstream infile{"public/errors/" + std::to_string(status) + ".html"};
         body = std::string{std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>()};
         infile.close();
-        headers["Content-Type"] = content_types.at(".html");
+        headers["Content-Type"] = typesOfContent.at(".html");
         headers["Content-Length"] = std::to_string(body.length());
     }
 
-    for (const auto &header : std::array<std::string, 3>{"Content-Type", "Content-Length", "Connection"})
+    for (const std::string &header : std::array<std::string, 3>{"Content-Type", "Content-Length", "Connection"})
     {
         if (headers.find(header) != headers.end())
         {
@@ -118,7 +116,7 @@ static std::string response_format(const std::string &protocol, int status_code,
     return response;
 }
 
-static std::tuple<std::string, std::string, std::string> split_start_request_line(const std::string &line)
+static std::tuple<std::string, std::string, std::string> parseStartRequestLine(const std::string &line)
 {
     auto method_end = line.find(' ');
     auto path_end = line.find(' ', method_end + 1);
@@ -140,21 +138,21 @@ static std::tuple<std::string, std::string, std::string> split_start_request_lin
     return {method, path, protocol};
 }
 
-static std::string get_content_type(const std::string &ext)
+static std::string getContentType(const std::string &ext)
 {
-    std::string content_type;
-    if (content_types.find(ext) == content_types.end())
+    std::string type;
+    if (typesOfContent.find(ext) == typesOfContent.end())
     {
-        content_type = "text/plain";
+        type = "text/plain";
     }
     else
     {
-        content_type = content_types.at(ext);
+        type = typesOfContent.at(ext);
     }
-    return content_type;
+    return type;
 }
 
-static int check_host(std::unordered_map<std::string, std::string> headers)
+static int getStatusForHost(std::unordered_map<std::string, std::string> headers)
 {
     int status = 200;
     if (headers.find("Host") == headers.end())
@@ -163,8 +161,8 @@ static int check_host(std::unordered_map<std::string, std::string> headers)
     }
     else
     {
-        auto host = headers.at("Host");
-        auto port = std::to_string(SERVER_PORT);
+        std::string host = headers.at("Host");
+        std::string port = std::to_string(SERVER_PORT);
         if (host != "127.0.0.1:" + port && host != "localhost:" + port && host != "127.0.0.1:" + port + "\r" &&
             host != "localhost:" + port + "\r")
         {
@@ -174,14 +172,14 @@ static int check_host(std::unordered_map<std::string, std::string> headers)
     return status;
 }
 
-static std::string get_extension(const std::string &path)
+static std::string getExtension(const std::string &path)
 {
     auto dot_pos = path.find('.');
     auto ext = path.substr(dot_pos, path.length() - dot_pos);
     return ext;
 }
 
-std::string string_to_hex(const std::string &input)
+std::string inHex(const std::string &input)
 {
     constexpr char HEX_ALPHABET[] = "0123456789ABCDEF";
 
@@ -196,7 +194,7 @@ std::string string_to_hex(const std::string &input)
     return output;
 }
 
-static std::string get_response(const Client &client, const std::string &request)
+static std::string createResponse(const Client &client, const std::string &request)
 {
     std::string response;
     int status = 200;
@@ -211,19 +209,19 @@ static std::string get_response(const Client &client, const std::string &request
     std::cout << request << std::endl;
     printf("[%s] response: ", client.ip.c_str());
 
-    auto headers = get_headers(request.substr(line_end + 1, request.length() - line_end));
-    status = check_host(headers);
+    auto headers = getMapOfHeaders(request.substr(line_end + 1, request.length() - line_end));
+    status = getStatusForHost(headers);
     if (status != 200)
     {
-        response = response_format("HTTP/1.1", status, response_headers, body);
+        response = createResponse("HTTP/1.1", status, response_headers, body);
         return response;
     }
 
-    auto [method, path, protocol] = split_start_request_line(line);
+    auto [method, path, protocol] = parseStartRequestLine(line);
     if (method != "GET" || protocol != "HTTP/1.1")
     {
         status = 405;
-        response = response_format(protocol, status, response_headers, body);
+        response = createResponse(protocol, status, response_headers, body);
         return response;
     }
 
@@ -231,38 +229,38 @@ static std::string get_response(const Client &client, const std::string &request
     if (!infile.good())
     {
         status = 404;
-        response = response_format(protocol, status, response_headers, body);
+        response = createResponse(protocol, status, response_headers, body);
         return response;
     }
     body = std::string{std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>()};
     infile.close();
 
-    response_headers["Content-Type"] = get_content_type(get_extension(path));
+    response_headers["Content-Type"] = getContentType(getExtension(path));
     auto idx = response_headers["Content-Type"].find("image");
     if (idx != std::string::npos)
     {
-        body = string_to_hex(body);
+        body = inHex(body);
     }
     response_headers["Content-Length"] = std::to_string(body.length());
 
-    response = response_format(protocol, status, response_headers, body);
+    response = createResponse(protocol, status, response_headers, body);
 
     return response;
 }
 
-static void handle_function(const Client &client)
+static void clientHandler(const Client &client)
 {
-    char buff[MSG_LEN + 1];
+    char buff[BUFFER_SIZE + 1];
     bzero(buff, sizeof buff);
     read(client.socket, buff, sizeof buff);
 
     std::string request = buff;
-    auto response = get_response(client, request);
+    auto response = createResponse(client, request);
 
     write(client.socket, response.c_str(), response.size());
 }
 
-void *thread_function(__attribute__((unused)) void *argv)
+void *threadFun(__attribute__((unused)) void *argv)
 {
     while (!stop)
     {
@@ -279,13 +277,13 @@ void *thread_function(__attribute__((unused)) void *argv)
 
         if (pclient)
         {
-            handle_function(*pclient);
+            clientHandler(*pclient);
         }
     }
     return nullptr;
 }
 
-void new_client(const sockaddr_in &client_addr, int conn_fd)
+void addClientToQueue(const sockaddr_in &client_addr, int conn_fd)
 {
     pthread_mutex_lock(&mutex);
     queue.emplace(client_addr, conn_fd);
@@ -293,17 +291,17 @@ void new_client(const sockaddr_in &client_addr, int conn_fd)
     pthread_mutex_unlock(&mutex);
 }
 
-void sighandler(int signum)
+void signalHandler(int signum)
 {
-    cancel_threads();
+    threadsRemove();
     close(server_sd);
-    printf("[[Stop by %d]]\n", signum);
+    printf("Good bye!\n");
     exit(EXIT_SUCCESS);
 }
 
-int shutdown_server(const char *str)
+int exitOnServerError(const char *str)
 {
-    cancel_threads();
+    threadsRemove();
     close(server_sd);
     perror(str);
     return EXIT_FAILURE;
