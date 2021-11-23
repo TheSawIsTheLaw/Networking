@@ -14,7 +14,7 @@
 
 #include "properties.h"
 
-static int client_sd;
+int clientSocket;
 
 void sendGetRequest(const std::string &uri)
 {
@@ -25,7 +25,7 @@ void sendGetRequest(const std::string &uri)
     const auto request = oss.str();
 
     std::cout << "[[Request]]\n" << request << '\n';
-    write(client_sd, request.c_str(), request.size());
+    write(clientSocket, request.c_str(), request.size());
 }
 
 void createResponse()
@@ -36,7 +36,7 @@ void createResponse()
     do
     {
         bzero(buff, sizeof buff);
-        n = read(client_sd, buff, sizeof buff - 1);
+        n = read(clientSocket, buff, sizeof buff - 1);
         std::cout << buff;
         fflush(stdout);
     } while (n == sizeof buff - 1);
@@ -45,51 +45,46 @@ void createResponse()
 
 int exitClientOnFailure(const char *str)
 {
-    close(client_sd);
+    close(clientSocket);
     perror(str);
     return EXIT_FAILURE;
 }
 
 int main(int argc, char **argv)
 {
-    constexpr int DEFAULT_CLIENT_PORT = 8100;
-    constexpr const char *DEFAULT_URI = "index.html";
+    const char *filename = "index.html";
 
-    if (argc > 3)
+    if (argc == 1 || argc > 3)
     {
-        fprintf(stderr, "Usage: %s [port = %d] [uri = %s]\n", argv[0], DEFAULT_CLIENT_PORT, DEFAULT_URI);
+        std::cout << "Parameters of program:\n1. Port (required);\n2. URI (unnecessary);\n";
         return EXIT_FAILURE;
     }
 
-    int client_port = DEFAULT_CLIENT_PORT;
-    std::string uri = DEFAULT_URI;
+    std::string uri = filename;
 
-    if (argc > 1)
+    errno = 0;
+    char *endptr = argv[1];
+    int client_port = strtol(argv[1], &endptr, 10);
+    if (*endptr || errno)
     {
-        errno = 0;
-        char *endptr = argv[1];
-        client_port = strtol(argv[1], &endptr, 10);
-        if (*endptr || errno)
-        {
-            perror("strtol");
-            return EXIT_FAILURE;
-        }
-
-        constexpr int MIN_PORT = 1024;
-        constexpr int MAX_PORT = 65535;
-        if (client_port < MIN_PORT || client_port > MAX_PORT || client_port == SERVER_PORT)
-        {
-            fprintf(stderr, "argv[1]: invalid port\n");
-            return EXIT_FAILURE;
-        }
-
-        if (argc == 3)
-        {
-            uri = argv[2];
-        }
+        std::cout << "Client port parse error :(";
+        return EXIT_FAILURE;
     }
 
-    if ((client_sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    constexpr int MIN_PORT = 1024;
+    constexpr int MAX_PORT = 65535;
+    if (client_port < MIN_PORT || client_port > MAX_PORT || client_port == SERVER_PORT)
+    {
+        fprintf(stderr, "argv[1]: invalid port\n");
+        return EXIT_FAILURE;
+    }
+
+    if (argc == 3)
+    {
+        uri = argv[2];
+    }
+
+    if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("socket");
         return EXIT_FAILURE;
@@ -102,12 +97,12 @@ int main(int argc, char **argv)
         .l_onoff = 1,
         .l_linger = 0,
     };
-    if (setsockopt(client_sd, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
+    if (setsockopt(clientSocket, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
     {
         return exitClientOnFailure("setsockopt");
     }
 
-    if (bind(client_sd, reinterpret_cast<const sockaddr *>(&client_addr), sizeof client_addr) == -1)
+    if (bind(clientSocket, reinterpret_cast<const sockaddr *>(&client_addr), sizeof client_addr) == -1)
     {
         return exitClientOnFailure("bind");
     }
@@ -118,7 +113,7 @@ int main(int argc, char **argv)
         .sin_addr = {.s_addr = inet_addr("127.0.0.1")},
     };
 
-    if (connect(client_sd, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
+    if (connect(clientSocket, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
     {
         return exitClientOnFailure("connect");
     }
@@ -127,5 +122,5 @@ int main(int argc, char **argv)
     std::cout << "Request sent.";
     createResponse();
 
-    close(client_sd);
+    close(clientSocket);
 }

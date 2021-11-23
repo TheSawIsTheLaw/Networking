@@ -1,21 +1,23 @@
 #include <arpa/inet.h>
 #include <cstdio>
+#include <iostream>
 #include <stdlib.h>
 
 #include "http.h"
 #include "properties.h"
 #include <signal.h>
 
-extern int server_sd;
+extern int serverSocket;
 
 int main()
 {
     threadsCreation();
 
-    if ((server_sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         threadsRemove();
-        perror("socket");
+        std::cout << "Cannot create socket.";
+
         return EXIT_FAILURE;
     }
 
@@ -29,17 +31,17 @@ int main()
         .l_onoff = 1,
         .l_linger = 0,
     };
-    if (setsockopt(server_sd, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
     {
         return exitOnServerError("setsockopt");
     }
 
-    if (bind(server_sd, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
+    if (bind(serverSocket, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
     {
         return exitOnServerError("bind");
     }
 
-    if (listen(server_sd, LISTEN_COUNT) == -1)
+    if (listen(serverSocket, LISTEN_COUNT) == -1)
     {
         return exitOnServerError("listen");
     }
@@ -49,15 +51,15 @@ int main()
         return exitOnServerError("signal");
     }
 
-    printf("server is running on %s:%d\n", inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
+    std::cout << "Server started on port " << ntohs(server_addr.sin_port) << std::endl;
     for (;;)
     {
         sockaddr_in client_addr{};
         socklen_t client_size = sizeof client_addr;
-        const int conn_fd = accept(server_sd, reinterpret_cast<sockaddr *>(&client_addr), &client_size);
+        const int conn_fd = accept(serverSocket, reinterpret_cast<sockaddr *>(&client_addr), &client_size);
         if (conn_fd == -1)
         {
-            return exitOnServerError("accept");
+            return exitOnServerError("Error on acception");
         }
 
         addClientToQueue(client_addr, conn_fd);

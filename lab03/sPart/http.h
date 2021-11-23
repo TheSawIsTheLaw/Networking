@@ -3,15 +3,17 @@
 
 #include <netinet/in.h>
 
+#include <string>
+
 constexpr int NUMBER_OF_THREADS = 20;
 constexpr int LISTEN_COUNT = 100;
 
 void threadsCreation();
 void threadsRemove();
 void *threadFun(void *argv);
-void addClientToQueue(const sockaddr_in &client_addr, int conn_fd);
+void addClientToQueue(const sockaddr_in &clientAddr, int clientConnection);
 
 void signalHandler(int signum);
-int exitOnServerError(const char *str);
+int exitOnServerError(std::string errorString);
 
 #endif // HTTP_H

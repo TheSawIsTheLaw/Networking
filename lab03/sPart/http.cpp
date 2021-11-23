@@ -10,7 +10,6 @@
 #include <iostream>
 #include <queue>
 #include <sstream>
-#include <string>
 #include <unordered_map>
 
 #include "sys/un.h"
@@ -18,7 +17,7 @@
 
 #include "properties.h"
 
-int server_sd;
+int serverSocket;
 
 static sig_atomic_t stop;
 static pthread_t poolOfThreads[NUMBER_OF_THREADS];
@@ -205,9 +204,9 @@ static std::string createResponse(const Client &client, const std::string &reque
 
     auto line_end = request.find('\n');
     auto line = request.substr(0, line_end);
-    printf("\n[%s]  request: %s\n", client.ip.c_str(), line.c_str());
+    std::cout << "From IP:" << client.ip.c_str() << "We've got request:" << line.c_str() << std::endl;
     std::cout << request << std::endl;
-    printf("[%s] response: ", client.ip.c_str());
+    std::cout << "Prepared response for it:" << std::endl;
 
     auto headers = getMapOfHeaders(request.substr(line_end + 1, request.length() - line_end));
     status = getStatusForHost(headers);
@@ -283,10 +282,10 @@ void *threadFun(__attribute__((unused)) void *argv)
     return nullptr;
 }
 
-void addClientToQueue(const sockaddr_in &client_addr, int conn_fd)
+void addClientToQueue(const sockaddr_in &clientAddr, int clientConnection)
 {
     pthread_mutex_lock(&mutex);
-    queue.emplace(client_addr, conn_fd);
+    queue.emplace(clientAddr, clientConnection);
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
 }
@@ -294,15 +293,16 @@ void addClientToQueue(const sockaddr_in &client_addr, int conn_fd)
 void signalHandler(int signum)
 {
     threadsRemove();
-    close(server_sd);
-    printf("Good bye!\n");
+    close(serverSocket);
+    std::cout << "Good bye!" << std::endl;
     exit(EXIT_SUCCESS);
 }
 
-int exitOnServerError(const char *str)
+int exitOnServerError(std::string errorString)
 {
     threadsRemove();
-    close(server_sd);
-    perror(str);
+    close(serverSocket);
+    std::cout << errorString;
+
     return EXIT_FAILURE;
 }
