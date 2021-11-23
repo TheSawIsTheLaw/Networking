@@ -16,27 +16,27 @@ int main()
     if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         threadsRemove();
-        std::cout << "Cannot create socket.";
+        std::cout << "Cannot create socket";
 
         return EXIT_FAILURE;
     }
 
-    const sockaddr_in server_addr = {
+    const sockaddr_in serverAddr = {
         .sin_family = AF_INET,
         .sin_port = htons(SERVER_PORT),
         .sin_addr = {.s_addr = INADDR_ANY},
     };
 
-    const linger sl = {
+    const linger option = {
         .l_onoff = 1,
         .l_linger = 0,
     };
-    if (setsockopt(serverSocket, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_LINGER, &option, sizeof(option)) == -1)
     {
         return exitOnServerError("Error on setsockopt");
     }
 
-    if (bind(serverSocket, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
+    if (bind(serverSocket, reinterpret_cast<const sockaddr *>(&serverAddr), sizeof(serverAddr)) == -1)
     {
         return exitOnServerError("Error on bind");
     }
@@ -51,17 +51,17 @@ int main()
         return exitOnServerError("Error on exit signal handler setter");
     }
 
-    std::cout << "Server started on port " << ntohs(server_addr.sin_port) << std::endl;
+    std::cout << "Server started on port " << ntohs(serverAddr.sin_port) << std::endl;
     for (;;)
     {
-        sockaddr_in client_addr{};
-        socklen_t client_size = sizeof client_addr;
-        const int conn_fd = accept(serverSocket, reinterpret_cast<sockaddr *>(&client_addr), &client_size);
-        if (conn_fd == -1)
+        sockaddr_in clientAddr;
+        socklen_t client_size;
+        const int connectionSocket = accept(serverSocket, reinterpret_cast<sockaddr *>(&clientAddr), &client_size);
+        if (connectionSocket == -1)
         {
             return exitOnServerError("Error on acception");
         }
 
-        addClientToQueue(client_addr, conn_fd);
+        addClientToQueue(clientAddr, connectionSocket);
     }
 }

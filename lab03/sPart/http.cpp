@@ -19,7 +19,7 @@
 
 int serverSocket;
 
-static sig_atomic_t stop;
+static sig_atomic_t threadsAreWorking = true;
 static pthread_t poolOfThreads[NUMBER_OF_THREADS];
 
 void threadsCreation()
@@ -32,29 +32,30 @@ void threadsCreation()
 
 void threadsRemove()
 {
-    stop = true;
+    threadsAreWorking = false;
+
     for (int i = 0; i < NUMBER_OF_THREADS; i++)
     {
         pthread_cancel(poolOfThreads[i]);
     }
 }
 
-class Client
+class IpAndSocketInfo
 {
   public:
-    Client(sockaddr_in client_addr, int conn_fd)
-        : ip(std::string(inet_ntoa(client_addr.sin_addr)) + ":" + std::to_string(ntohs(client_addr.sin_port))),
-          socket(conn_fd)
-    {
-    }
+    std::string ip;
+    int socket;
 
-    const std::string ip;
-    const int socket;
+    IpAndSocketInfo(sockaddr_in clientAddr, int connectionSocket)
+    {
+        ip = std::string(inet_ntoa(clientAddr.sin_addr)) + ":" + std::to_string(ntohs(clientAddr.sin_port));
+        socket = connectionSocket;
+    }
 };
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-static std::queue<Client> queue;
+static std::queue<IpAndSocketInfo> queue;
 
 static const std::unordered_map<std::string, std::string> typesOfContent = {
     {".html", "text/html"},
@@ -96,9 +97,9 @@ static std::string createResponse(const std::string &protocol, int status,
 
     if (status != 200)
     {
-        std::ifstream infile{"public/errors/" + std::to_string(status) + ".html"};
-        body = std::string{std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>()};
-        infile.close();
+        std::ifstream requiredFile{"public/errors/" + std::to_string(status) + ".html"};
+        body = std::string{std::istreambuf_iterator<char>(requiredFile), std::istreambuf_iterator<char>()};
+        requiredFile.close();
         headers["Content-Type"] = typesOfContent.at(".html");
         headers["Content-Length"] = std::to_string(body.length());
     }
@@ -193,7 +194,7 @@ std::string inHex(const std::string &input)
     return output;
 }
 
-static std::string createResponse(const Client &client, const std::string &request)
+static std::string createResponse(const IpAndSocketInfo &clientInfo, const std::string &request)
 {
     std::string response;
     int status = 200;
@@ -204,7 +205,7 @@ static std::string createResponse(const Client &client, const std::string &reque
 
     auto line_end = request.find('\n');
     auto line = request.substr(0, line_end);
-    std::cout << "From IP:" << client.ip.c_str() << "We've got request:" << line.c_str() << std::endl;
+    std::cout << "From IP:" << clientInfo.ip.c_str() << "We've got request:" << line.c_str() << std::endl;
     std::cout << request << std::endl;
     std::cout << "Prepared response for it:" << std::endl;
 
@@ -213,6 +214,7 @@ static std::string createResponse(const Client &client, const std::string &reque
     if (status != 200)
     {
         response = createResponse("HTTP/1.1", status, response_headers, body);
+
         return response;
     }
 
@@ -221,21 +223,23 @@ static std::string createResponse(const Client &client, const std::string &reque
     {
         status = 405;
         response = createResponse(protocol, status, response_headers, body);
+
         return response;
     }
 
-    std::ifstream infile{path};
-    if (!infile.good())
+    std::ifstream requiredFile{path};
+    if (!requiredFile.good())
     {
         status = 404;
         response = createResponse(protocol, status, response_headers, body);
+
         return response;
     }
-    body = std::string{std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>()};
-    infile.close();
+    body = std::string{std::istreambuf_iterator<char>(requiredFile), std::istreambuf_iterator<char>()};
+    requiredFile.close();
 
     response_headers["Content-Type"] = getContentType(getExtension(path));
-    auto idx = response_headers["Content-Type"].find("image");
+    size_t idx = response_headers["Content-Type"].find("image");
     if (idx != std::string::npos)
     {
         body = inHex(body);
@@ -247,38 +251,39 @@ static std::string createResponse(const Client &client, const std::string &reque
     return response;
 }
 
-static void clientHandler(const Client &client)
+static void clientHandler(const IpAndSocketInfo &clientInfo)
 {
-    char buff[BUFFER_SIZE + 1];
-    bzero(buff, sizeof buff);
-    read(client.socket, buff, sizeof buff);
+    char buff[BUFFER_SIZE];
+    bzero(buff, sizeof(buff));
+    read(clientInfo.socket, buff, sizeof(buff));
 
     std::string request = buff;
-    auto response = createResponse(client, request);
+    auto response = createResponse(clientInfo, request);
 
-    write(client.socket, response.c_str(), response.size());
+    write(clientInfo.socket, response.c_str(), response.size());
 }
 
-void *threadFun(__attribute__((unused)) void *argv)
+void *threadFun(void *argv)
 {
-    while (!stop)
+    while (threadsAreWorking)
     {
-        Client *pclient = nullptr;
+        IpAndSocketInfo *client = nullptr;
 
         pthread_mutex_lock(&mutex);
         if (queue.empty())
         {
             pthread_cond_wait(&cond, &mutex);
-            pclient = &queue.front();
+            client = &queue.front();
             queue.pop();
         }
         pthread_mutex_unlock(&mutex);
 
-        if (pclient)
+        if (client)
         {
-            clientHandler(*pclient);
+            clientHandler(*client);
         }
     }
+
     return nullptr;
 }
 
@@ -295,6 +300,7 @@ void signalHandler(int signum)
     threadsRemove();
     close(serverSocket);
     std::cout << "Good bye!" << std::endl;
+
     exit(EXIT_SUCCESS);
 }
 
