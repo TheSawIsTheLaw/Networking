@@ -33,22 +33,22 @@ int main()
     };
     if (setsockopt(serverSocket, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
     {
-        return exitOnServerError("setsockopt");
+        return exitOnServerError("Error on setsockopt");
     }
 
     if (bind(serverSocket, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
     {
-        return exitOnServerError("bind");
+        return exitOnServerError("Error on bind");
     }
 
     if (listen(serverSocket, LISTEN_COUNT) == -1)
     {
-        return exitOnServerError("listen");
+        return exitOnServerError("Error on listen");
     }
 
     if (signal(SIGINT, signalHandler) == SIG_ERR)
     {
-        return exitOnServerError("signal");
+        return exitOnServerError("Error on exit signal handler setter");
     }
 
     std::cout << "Server started on port " << ntohs(server_addr.sin_port) << std::endl;

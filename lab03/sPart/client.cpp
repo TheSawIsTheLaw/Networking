@@ -43,10 +43,11 @@ void createResponse()
     std::cout << std::endl;
 }
 
-int exitClientOnFailure(const char *str)
+int exitClientOnFailure(std::string errorString)
 {
     close(clientSocket);
-    perror(str);
+    std::cout << (errorString) << std::endl;
+
     return EXIT_FAILURE;
 }
 
@@ -86,7 +87,7 @@ int main(int argc, char **argv)
 
     if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
-        perror("socket");
+        std::cout << "Error on socket creation" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -99,12 +100,12 @@ int main(int argc, char **argv)
     };
     if (setsockopt(clientSocket, SOL_SOCKET, SO_LINGER, &sl, sizeof sl) == -1)
     {
-        return exitClientOnFailure("setsockopt");
+        return exitClientOnFailure("Error on setsockopt");
     }
 
     if (bind(clientSocket, reinterpret_cast<const sockaddr *>(&client_addr), sizeof client_addr) == -1)
     {
-        return exitClientOnFailure("bind");
+        return exitClientOnFailure("Error on bind");
     }
 
     const sockaddr_in server_addr = {
@@ -115,11 +116,11 @@ int main(int argc, char **argv)
 
     if (connect(clientSocket, reinterpret_cast<const sockaddr *>(&server_addr), sizeof server_addr) == -1)
     {
-        return exitClientOnFailure("connect");
+        return exitClientOnFailure("Error on connection set");
     }
 
     sendGetRequest(uri);
-    std::cout << "Request sent.";
+    std::cout << "Request sent successfully!" << std::endl;
     createResponse();
 
     close(clientSocket);
