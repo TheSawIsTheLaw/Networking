@@ -1,3 +1,5 @@
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import javax.mail.*
 import javax.mail.internet.*
@@ -24,28 +26,12 @@ fun findFilesToAttach(keyWord: String): List<File>
     return filesToAttach
 }
 
-fun main(args: Array<String>)
+fun sendMessage(recipientAddress: String,
+                senderAddress: String,
+                senderPassword: String,
+                messageText: String,
+                keyWordToAttachFile: String)
 {
-    if (args.size != 5)
-    {
-        println(
-            "Parameters:\n" +
-                    "1. Recipient address\n" +
-                    "2. Sender address\n" +
-                    "3. Sender password\n" +
-                    "4. Message\n" +
-                    "5. Key word for attached text file."
-        )
-
-        return
-    }
-
-    val recipientAddress = args[0]
-    val senderAddress = args[1]
-    val senderPassword = args[2]
-    val messageText = args[3]
-    val keyWordToAttachFile = args[4]
-
     val host = "smtp.gmail.com"
 
     val properties = System.getProperties()
@@ -74,8 +60,7 @@ fun main(args: Array<String>)
             Message.RecipientType.TO,
             InternetAddress(recipientAddress)
         )
-        message.subject = "Looks like i'm using some strange ways to write " +
-                "you a message..."
+        message.subject = "какой спам вы чо, это искусство"
         val multipart = MimeMultipart()
 
         val textPart = MimeBodyPart()
@@ -90,7 +75,10 @@ fun main(args: Array<String>)
         }
 
         message.setContent(multipart)
-        Transport.send(message)
+        while (true)
+        {
+            Transport.send(message)
+        }
 
         println("Sent successfully")
     }
@@ -98,4 +86,29 @@ fun main(args: Array<String>)
     {
         println("Your message can't be sent :(")
     }
+}
+
+fun main(args: Array<String>)
+{
+    if (args.size != 5)
+    {
+        println(
+            "Parameters:\n" +
+                    "1. Recipient address\n" +
+                    "2. Sender address\n" +
+                    "3. Sender password\n" +
+                    "4. Message\n" +
+                    "5. Key word for attached text file."
+        )
+
+        return
+    }
+
+    val recipientAddress = args[0]
+    val senderAddress = args[1]
+    val senderPassword = args[2]
+    val messageText = args[3]
+    val keyWordToAttachFile = args[4]
+
+    sendMessage(recipientAddress, senderAddress, senderPassword, messageText, keyWordToAttachFile)
 }
